@@ -40,6 +40,10 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 9px 12px; text-align: right; border-bottom: 2px solid var(--border); white-space: nowrap; }
   th:first-child { text-align: left; }
+  th.group-ko { background: rgba(88,166,255,0.08); color: var(--blue); border-bottom: 1px solid rgba(88,166,255,0.3); text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  th.group-ht { background: rgba(63,185,80,0.08); color: var(--green); border-bottom: 1px solid rgba(63,185,80,0.3); text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  th.sub-ko { background: rgba(88,166,255,0.04); border-bottom: 2px solid var(--border); }
+  th.sub-ht { background: rgba(63,185,80,0.04); border-bottom: 2px solid var(--border); }
   td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
   td:first-child { text-align: left; font-weight: 500; }
   tr:hover td { background: var(--bg3); }
@@ -129,6 +133,9 @@ const YEARLY = [
   {season:"2024/25",n:477,draws:178,draw_pct:37.3,avg_pre:26.0,avg_ht:36.4,pnl:16252,cum_pnl:67343,z:0.40,profitable:1},
 ];
 
+// avg_pre = Pinnacle pre-game implied draw probability (= KO buy price in ¢)
+// draw_pct = actual draw rate from games that were 0-0 at HT (= HT draw %)
+// avg_ht = estimated HT buy price = avg_pre × 1.40 (= HT buy price in ¢)
 const LEAGUES = [
   {name:"EPL",         n:1414,draws:500,draw_pct:35.4,avg_pre:25.2,avg_ht:35.2,ev:0.4,  pnl:7721,   z:0.11},
   {name:"La Liga",     n:1573,draws:565,draw_pct:35.9,avg_pre:26.4,avg_ht:36.9,ev:-2.7, pnl:-33848, z:-0.83},
@@ -257,24 +264,41 @@ const tbody = `<tbody>${YEARLY.map(r => {
 
 document.getElementById('yearly-table').innerHTML = thead + tbody;
 
-// League table
-const lthead = `<thead><tr>
-  <th>League</th><th>Games (0-0 HT)</th><th>Draws</th><th>Draw%</th>
-  <th>Market HT Price</th><th>EV / Trade</th><th>Total P&amp;L</th><th>z-score</th><th>Signal</th>
-</tr></thead>`;
+// League table — two-row header with KO / HT column groups
+const lthead = `<thead>
+<tr>
+  <th rowspan="2" style="vertical-align:bottom;text-align:left">League</th>
+  <th rowspan="2" style="vertical-align:bottom">Trades</th>
+  <th rowspan="2" style="vertical-align:bottom">Draws</th>
+  <th colspan="2" class="group-ko">Pre-Game (KO)</th>
+  <th colspan="2" class="group-ht">Half-Time 0-0</th>
+  <th rowspan="2" style="vertical-align:bottom">EV / Trade</th>
+  <th rowspan="2" style="vertical-align:bottom">13yr P&amp;L</th>
+  <th rowspan="2" style="vertical-align:bottom">Signal</th>
+</tr>
+<tr>
+  <th class="sub-ko" title="Pinnacle implied draw probability at kickoff">Draw %</th>
+  <th class="sub-ko" title="Price to buy Draw on Polymarket at kickoff (= implied prob in ¢)">Buy Price</th>
+  <th class="sub-ht" title="Actual historical draw rate for games that were 0-0 at HT">Actual Draw %</th>
+  <th class="sub-ht" title="Estimated buy price at 0-0 HT = KO price × 1.40">Est. Buy Price</th>
+</tr>
+</thead>`;
 
 const ltbody = `<tbody>${LEAGUES.map(r => {
   const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
   const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
+  // EV = actual draw% vs estimated HT buy price
+  const evCls = r.ev >= 0 ? 'profit' : 'loss';
   return `<tr>
     <td>${r.name}</td>
     <td>${r.n.toLocaleString()}</td>
     <td>${r.draws.toLocaleString()}</td>
-    <td>${fmt(r.draw_pct)}%</td>
-    <td>${fmt(r.avg_ht)}¢</td>
-    <td class="${r.ev>=0?'profit':'loss'}">${pnlSign(r.ev)}${fmt(r.ev)}%</td>
+    <td style="background:rgba(88,166,255,0.03)">${fmt(r.avg_pre)}%</td>
+    <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(r.avg_pre)}¢</td>
+    <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(r.draw_pct)}%</td>
+    <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(r.avg_ht)}¢</td>
+    <td class="${evCls}">${pnlSign(r.ev)}${fmt(r.ev)}%</td>
     <td class="${pnlClass(r.pnl)}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
-    <td class="${Math.abs(r.z)>1.96?'sig':(r.z>0?'profit':'loss')}">${r.z>0?'+':''}${fmt(r.z,2)}</td>
     <td><span class="badge ${sig}">${sigText}</span></td>
   </tr>`;
 }).join('')}</tbody>`;
