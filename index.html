@@ -229,11 +229,26 @@ Plotly.newPlot('equity-chart', [{
   hovermode: 'closest'
 });
 
-// Yearly table
-const thead = `<thead><tr>
-  <th>Season</th><th>Games</th><th>Draws</th><th>Draw%</th>
-  <th>Avg HT Price</th><th>ROI/Trade</th><th>Season P&amp;L</th><th>Cum P&amp;L</th><th>z</th>
-</tr></thead>`;
+// Yearly table — two-row header with KO / HT column groups
+const thead = `<thead>
+<tr>
+  <th rowspan="2" style="vertical-align:bottom;text-align:left">Season</th>
+  <th rowspan="2" style="vertical-align:bottom">Games</th>
+  <th rowspan="2" style="vertical-align:bottom">Draws</th>
+  <th colspan="2" class="group-ko">Pre-Game (KO)</th>
+  <th colspan="2" class="group-ht">Half-Time 0-0</th>
+  <th rowspan="2" style="vertical-align:bottom">ROI / Trade</th>
+  <th rowspan="2" style="vertical-align:bottom">Season P&amp;L</th>
+  <th rowspan="2" style="vertical-align:bottom">Cum P&amp;L</th>
+  <th rowspan="2" style="vertical-align:bottom">z</th>
+</tr>
+<tr>
+  <th class="sub-ko" title="Pinnacle implied draw probability at kickoff">Draw %</th>
+  <th class="sub-ko" title="Price to buy at kickoff (= implied prob in ¢)">Buy Price</th>
+  <th class="sub-ht" title="Actual draw rate from 0-0 HT games this season">Actual Draw %</th>
+  <th class="sub-ht" title="Estimated HT buy price = KO price × 1.40">Est. Buy Price</th>
+</tr>
+</thead>`;
 
 const tbody = `<tbody>${YEARLY.map(r => {
   const r_ = roi(r.draw_pct, r.avg_ht);
@@ -244,8 +259,10 @@ const tbody = `<tbody>${YEARLY.map(r => {
     <td>${r.season}</td>
     <td>${r.n.toLocaleString()}</td>
     <td>${r.draws}</td>
-    <td>${fmt(r.draw_pct)}%</td>
-    <td>${fmt(r.avg_ht)}¢</td>
+    <td style="background:rgba(88,166,255,0.03)">${fmt(r.avg_pre)}%</td>
+    <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(r.avg_pre)}¢</td>
+    <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(r.draw_pct)}%</td>
+    <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(r.avg_ht)}¢</td>
     <td class="${r_>=0?'profit':'loss'}">${pnlSign(r_)}${fmt(r_)}%</td>
     <td class="${pnlCls}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
     <td class="${cumCls}">${pnlSign(r.cum_pnl)}${r.cum_pnl.toLocaleString()}</td>
@@ -254,8 +271,10 @@ const tbody = `<tbody>${YEARLY.map(r => {
 }).join('')}
 <tr style="font-weight:700; border-top: 2px solid #30363d;">
   <td>TOTAL</td><td>6,883</td><td>2,516</td>
-  <td>${fmt(2516/6883*100)}%</td>
-  <td>${fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)}¢</td>
+  <td style="background:rgba(88,166,255,0.03)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length)}%</td>
+  <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length)}¢</td>
+  <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(2516/6883*100)}%</td>
+  <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)}¢</td>
   <td class="${overallROI>=0?'profit':'loss'}">${pnlSign(overallROI)}${fmt(overallROI)}%</td>
   <td class="${pnlClass(67343)}">+67,343</td>
   <td class="${pnlClass(67343)}">+67,343</td>
