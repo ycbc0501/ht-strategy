@@ -229,26 +229,19 @@ Plotly.newPlot('equity-chart', [{
   hovermode: 'closest'
 });
 
-// Yearly table — two-row header with KO / HT column groups
-const thead = `<thead>
-<tr>
-  <th rowspan="2" style="vertical-align:bottom;text-align:left">Season</th>
-  <th rowspan="2" style="vertical-align:bottom">Games</th>
-  <th rowspan="2" style="vertical-align:bottom">Draws</th>
-  <th colspan="2" class="group-ko">Pre-Game (KO)</th>
-  <th colspan="2" class="group-ht">Half-Time 0-0</th>
-  <th rowspan="2" style="vertical-align:bottom">ROI / Trade</th>
-  <th rowspan="2" style="vertical-align:bottom">Season P&amp;L</th>
-  <th rowspan="2" style="vertical-align:bottom">Cum P&amp;L</th>
-  <th rowspan="2" style="vertical-align:bottom">z</th>
-</tr>
-<tr>
-  <th class="sub-ko" title="Pinnacle implied draw probability at kickoff">Draw %</th>
-  <th class="sub-ko" title="Price to buy at kickoff (= implied prob in ¢)">Buy Price</th>
-  <th class="sub-ht" title="Actual draw rate from 0-0 HT games this season">Actual Draw %</th>
-  <th class="sub-ht" title="Estimated HT buy price = KO price × 1.40">Est. Buy Price</th>
-</tr>
-</thead>`;
+// Yearly table — KO single column (price=prob), HT two columns (actual draw% vs buy price)
+const thead = `<thead><tr>
+  <th style="text-align:left">Season</th>
+  <th>Games</th>
+  <th>Draws</th>
+  <th class="group-ko" title="Pinnacle implied draw probability at KO. On prediction markets price ¢ = probability %, so this is one number.">KO Implied (¢=%)</th>
+  <th class="group-ht" style="font-weight:700" title="Actual draw rate from games that were 0-0 at HT">HT Draw%</th>
+  <th class="sub-ht" title="Estimated buy price at HT = KO × 1.40">Est. HT Buy</th>
+  <th>ROI / Trade</th>
+  <th>Season P&amp;L</th>
+  <th>Cum P&amp;L</th>
+  <th>z</th>
+</tr></thead>`;
 
 const tbody = `<tbody>${YEARLY.map(r => {
   const r_ = roi(r.draw_pct, r.avg_ht);
@@ -259,7 +252,6 @@ const tbody = `<tbody>${YEARLY.map(r => {
     <td>${r.season}</td>
     <td>${r.n.toLocaleString()}</td>
     <td>${r.draws}</td>
-    <td style="background:rgba(88,166,255,0.03)">${fmt(r.avg_pre)}%</td>
     <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(r.avg_pre)}¢</td>
     <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(r.draw_pct)}%</td>
     <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(r.avg_ht)}¢</td>
@@ -271,7 +263,6 @@ const tbody = `<tbody>${YEARLY.map(r => {
 }).join('')}
 <tr style="font-weight:700; border-top: 2px solid #30363d;">
   <td>TOTAL</td><td>6,883</td><td>2,516</td>
-  <td style="background:rgba(88,166,255,0.03)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length)}%</td>
   <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length)}¢</td>
   <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(2516/6883*100)}%</td>
   <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)}¢</td>
@@ -283,36 +274,27 @@ const tbody = `<tbody>${YEARLY.map(r => {
 
 document.getElementById('yearly-table').innerHTML = thead + tbody;
 
-// League table — two-row header with KO / HT column groups
-const lthead = `<thead>
-<tr>
-  <th rowspan="2" style="vertical-align:bottom;text-align:left">League</th>
-  <th rowspan="2" style="vertical-align:bottom">Trades</th>
-  <th rowspan="2" style="vertical-align:bottom">Draws</th>
-  <th colspan="2" class="group-ko">Pre-Game (KO)</th>
-  <th colspan="2" class="group-ht">Half-Time 0-0</th>
-  <th rowspan="2" style="vertical-align:bottom">EV / Trade</th>
-  <th rowspan="2" style="vertical-align:bottom">13yr P&amp;L</th>
-  <th rowspan="2" style="vertical-align:bottom">Signal</th>
-</tr>
-<tr>
-  <th class="sub-ko" title="Pinnacle implied draw probability at kickoff">Draw %</th>
-  <th class="sub-ko" title="Price to buy Draw on Polymarket at kickoff (= implied prob in ¢)">Buy Price</th>
-  <th class="sub-ht" title="Actual historical draw rate for games that were 0-0 at HT">Actual Draw %</th>
-  <th class="sub-ht" title="Estimated buy price at 0-0 HT = KO price × 1.40">Est. Buy Price</th>
-</tr>
-</thead>`;
+// League table — KO single column, HT two columns
+const lthead = `<thead><tr>
+  <th style="text-align:left">League</th>
+  <th>Trades</th>
+  <th>Draws</th>
+  <th class="group-ko" title="Pinnacle implied draw probability at KO. Price ¢ = probability %, so this is one number.">KO Implied (¢=%)</th>
+  <th class="group-ht" style="font-weight:700" title="Actual draw rate from games that were 0-0 at HT">HT Draw%</th>
+  <th class="sub-ht" title="Estimated buy price at HT = KO × 1.40">Est. HT Buy</th>
+  <th>EV / Trade</th>
+  <th>13yr P&amp;L</th>
+  <th>Signal</th>
+</tr></thead>`;
 
 const ltbody = `<tbody>${LEAGUES.map(r => {
   const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
   const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
-  // EV = actual draw% vs estimated HT buy price
   const evCls = r.ev >= 0 ? 'profit' : 'loss';
   return `<tr>
     <td>${r.name}</td>
     <td>${r.n.toLocaleString()}</td>
     <td>${r.draws.toLocaleString()}</td>
-    <td style="background:rgba(88,166,255,0.03)">${fmt(r.avg_pre)}%</td>
     <td style="background:rgba(88,166,255,0.03);color:var(--text2)">${fmt(r.avg_pre)}¢</td>
     <td style="background:rgba(63,185,80,0.03);font-weight:600">${fmt(r.draw_pct)}%</td>
     <td style="background:rgba(63,185,80,0.03);color:var(--text2)">${fmt(r.avg_ht)}¢</td>
