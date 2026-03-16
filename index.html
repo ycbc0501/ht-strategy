@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0-0 HT Draw Strategy — 13-Year Backtest</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h2 { font-size: 17px; font-weight: 600; color: var(--text2); margin: 32px 0 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .subtitle { color: var(--text2); font-size: 14px; margin-bottom: 28px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+  .card-label { color: var(--text2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .card-val { font-size: 24px; font-weight: 700; }
+  .card-sub { color: var(--text2); font-size: 12px; margin-top: 3px; }
+  .green { color: var(--green); }
+  .red { color: var(--red); }
+  .yellow { color: var(--yellow); }
+  .blue { color: var(--blue); }
+  .purple { color: var(--purple); }
+  .orange { color: var(--orange); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 9px 12px; text-align: right; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  th:first-child { text-align: left; }
+  td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  td:first-child { text-align: left; font-weight: 500; }
+  tr:hover td { background: var(--bg3); }
+  .profit { color: var(--green); }
+  .loss { color: var(--red); }
+  .sig { color: var(--purple); font-weight: 600; }
+  .note { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; color: var(--text2); font-size: 13px; line-height: 1.7; margin-top: 28px; }
+  .note strong { color: var(--text); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-sig { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+  .badge-ok { background: rgba(63,185,80,0.12); color: var(--green); border: 1px solid rgba(63,185,80,0.25); }
+  .badge-bad { background: rgba(248,81,73,0.12); color: var(--red); border: 1px solid rgba(248,81,73,0.25); }
+  .chart-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 28px; }
+  .footer { margin-top: 48px; color: var(--text2); font-size: 12px; border-top: 1px solid var(--border); padding-top: 18px; }
+  .strategy-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; margin-bottom: 28px; }
+  .strategy-box p { margin-bottom: 8px; }
+  .strategy-box ul { padding-left: 20px; color: var(--text2); }
+  .strategy-box li { margin-bottom: 4px; }
+  .bund-highlight { background: rgba(188,140,255,0.06); border-color: rgba(188,140,255,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>0-0 Half-Time Draw Strategy</h1>
+  <p class="subtitle">13-season backtest (2012/13 – 2024/25) across EPL, La Liga, Bundesliga, Serie A, Ligue 1 — using Pinnacle closing odds as fair-value benchmark</p>
+
+  <!-- Summary cards -->
+  <div class="cards" id="summary-cards"></div>
+
+  <!-- Equity curve -->
+  <h2>Cumulative P&amp;L (13 seasons)</h2>
+  <div class="chart-wrap"><div id="equity-chart" style="height:320px"></div></div>
+
+  <!-- Year-by-year table -->
+  <h2>Year-by-Year Results (All 5 Leagues)</h2>
+  <table id="yearly-table"></table>
+
+  <!-- League breakdown -->
+  <h2>By League (2012–2025, 0-0 HT Games Only)</h2>
+  <table id="league-table"></table>
+
+  <!-- Strategy description -->
+  <h2>Strategy Rules</h2>
+  <div class="strategy-box">
+    <p><strong>Entry:</strong> Buy Draw at half-time when score is 0-0. Entry price estimated as pre-game Pinnacle draw probability × 1.40 (HT factor calibrated from 2025-26 Polymarket live data: 24.1¢ pre-game → 34.0¢ at 0-0 HT on average).</p>
+    <p><strong>Exit:</strong> Hold to full-time. Payout = 100¢ if draw, 0¢ if not.</p>
+    <p><strong>Universe:</strong> All games across 5 top European leagues where score is 0-0 at half-time and Pinnacle closing odds are available.</p>
+    <ul>
+      <li>n ≈ 530 qualifying games per season (roughly 38% of all games end 0-0 at HT)</li>
+      <li>Historical draw rate from 0-0 HT: ~36.3% across all leagues/seasons</li>
+      <li>Pinnacle fair-value HT draw price ≈ 36.5¢ (implied from odds)</li>
+    </ul>
+  </div>
+
+  <!-- Bundesliga highlight -->
+  <h2>Bundesliga Signal <span class="badge badge-sig">p = 0.018</span></h2>
+  <div class="strategy-box bund-highlight">
+    <p><strong>Why Bundesliga stands out:</strong> Over 992 games (13 seasons), the Bundesliga shows a statistically significant draw overperformance at 0-0 HT — actual draw rate 37.9% vs market implied 34.7%, EV = +9.1%, z = 2.09, p = 0.018.</p>
+    <p style="margin-top:10px; color: var(--text2)">The other 4 leagues show no meaningful edge (|z| &lt; 1.0). This suggests Bundesliga-specific market inefficiency — the draw market may be systematically underpriced in German football. Possible explanations: lower liquidity, different playing style (higher press, more counterattack patterns leading to reset after HT), or bookmaker model bias.</p>
+    <p style="margin-top:10px; color: var(--text2)"><strong style="color:var(--text)">Caveat:</strong> p = 0.018 is borderline significant. With 5 leagues tested simultaneously, the Bonferroni-corrected threshold would be p &lt; 0.01. This is a promising signal, not a certainty. Requires live-market validation on Polymarket for confirmation.</p>
+  </div>
+
+  <div class="note">
+    <strong>Data source:</strong> football-data.co.uk — free historical CSVs with match results, HT scores (HTHG/HTAG), and Pinnacle closing odds (PSCH/PSCD/PSCA) going back to 2000. <strong>Fair-value method:</strong> Pinnacle implied draw probability normalized to remove margin: P(draw) = (1/D) / (1/H + 1/D + 1/A). HT price estimated by multiplying pre-game probability by 1.40 (the empirical HT factor from Polymarket 2025-26 live data). <strong>P&amp;L units:</strong> cents-per-game (if you stake $100/game, multiply P&amp;L by 1).
+  </div>
+
+  <div class="footer">
+    Built from 6,883 qualifying games across 5 leagues &amp; 13 seasons. Backtest does not account for transaction costs, market impact, or execution slippage. Past performance does not guarantee future results.
+  </div>
+</div>
+
+<script>
+const YEARLY = [
+  {season:"2012/13",n:553,draws:198,draw_pct:35.8,avg_pre:26.3,avg_ht:36.8,pnl:-22029,cum_pnl:-22029,z:-0.50,profitable:0},
+  {season:"2013/14",n:528,draws:180,draw_pct:34.1,avg_pre:25.7,avg_ht:36.0,pnl:-41751,cum_pnl:-63780,z:-0.89,profitable:0},
+  {season:"2014/15",n:553,draws:222,draw_pct:40.1,avg_pre:26.6,avg_ht:37.2,pnl:51323,cum_pnl:-12457,z:1.44,profitable:1},
+  {season:"2015/16",n:572,draws:219,draw_pct:38.3,avg_pre:26.4,avg_ht:36.9,pnl:27418,cum_pnl:14961,z:0.67,profitable:1},
+  {season:"2016/17",n:555,draws:193,draw_pct:34.8,avg_pre:25.7,avg_ht:36.0,pnl:-11476,cum_pnl:3485,z:-0.60,profitable:0},
+  {season:"2017/18",n:543,draws:195,draw_pct:35.9,avg_pre:25.8,avg_ht:36.1,pnl:7817,cum_pnl:11302,z:-0.08,profitable:1},
+  {season:"2018/19",n:569,draws:203,draw_pct:35.7,avg_pre:25.8,avg_ht:36.1,pnl:-10684,cum_pnl:618,z:-0.19,profitable:0},
+  {season:"2019/20",n:492,draws:168,draw_pct:34.1,avg_pre:26.1,avg_ht:36.6,pnl:-34943,cum_pnl:-34325,z:-1.12,profitable:0},
+  {season:"2020/21",n:520,draws:202,draw_pct:38.8,avg_pre:25.8,avg_ht:36.1,pnl:33353,cum_pnl:-972,z:1.31,profitable:1},
+  {season:"2021/22",n:521,draws:194,draw_pct:37.2,avg_pre:25.8,avg_ht:36.1,pnl:32347,cum_pnl:31374,z:0.53,profitable:1},
+  {season:"2022/23",n:510,draws:181,draw_pct:35.5,avg_pre:26.0,avg_ht:36.5,pnl:-575,cum_pnl:30799,z:-0.45,profitable:0},
+  {season:"2023/24",n:490,draws:183,draw_pct:37.3,avg_pre:26.0,avg_ht:36.3,pnl:20292,cum_pnl:51091,z:0.46,profitable:1},
+  {season:"2024/25",n:477,draws:178,draw_pct:37.3,avg_pre:26.0,avg_ht:36.4,pnl:16252,cum_pnl:67343,z:0.40,profitable:1},
+];
+
+const LEAGUES = [
+  {name:"EPL",         n:1414,draws:500,draw_pct:35.4,avg_pre:25.2,avg_ht:35.2,ev:0.4,  pnl:7721,   z:0.11},
+  {name:"La Liga",     n:1573,draws:565,draw_pct:35.9,avg_pre:26.4,avg_ht:36.9,ev:-2.7, pnl:-33848, z:-0.83},
+  {name:"Bundesliga",  n:992, draws:376,draw_pct:37.9,avg_pre:24.8,avg_ht:34.7,ev:9.1,  pnl:106469, z:2.09},
+  {name:"Serie A",     n:1473,draws:536,draw_pct:36.4,avg_pre:26.0,avg_ht:36.4,ev:0.0,  pnl:-8258,  z:0.00},
+  {name:"Ligue 1",     n:1431,draws:539,draw_pct:37.7,avg_pre:27.2,avg_ht:38.1,ev:-1.2, pnl:-4741,  z:-0.36},
+];
+
+// ROI per trade = (draw_pct/100 * 100/avg_ht) - 1 = draw_pct/avg_ht - 1
+function roi(draw_pct, avg_ht) {
+  return ((draw_pct / avg_ht) - 1) * 100;
+}
+
+function fmt(n, decimals=1) {
+  return n.toFixed(decimals);
+}
+
+function pnlClass(v) { return v >= 0 ? 'profit' : 'loss'; }
+function pnlSign(v) { return v >= 0 ? '+' : ''; }
+
+// Summary cards
+const totalPnl = 67343;
+const profitable = 7;
+const totalYears = 13;
+const bundZ = 2.09;
+const bundP = 0.018;
+const avgDrawPct = YEARLY.reduce((s,r)=>s+r.draw_pct,0)/YEARLY.length;
+const avgHt = YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length;
+const overallROI = roi(avgDrawPct, avgHt);
+const annualSharpe = 0.18;
+
+document.getElementById('summary-cards').innerHTML = `
+  <div class="card">
+    <div class="card-label">Total P&amp;L (13yr)</div>
+    <div class="card-val ${totalPnl>=0?'green':'red'}">${pnlSign(totalPnl)}${totalPnl.toLocaleString()}</div>
+    <div class="card-sub">units across 6,883 games</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Profitable Seasons</div>
+    <div class="card-val yellow">${profitable} / ${totalYears}</div>
+    <div class="card-sub">53.8% win rate by year</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Avg ROI / Trade</div>
+    <div class="card-val ${overallROI>=0?'green':'red'}">${pnlSign(overallROI)}${fmt(overallROI)}%</div>
+    <div class="card-sub">all leagues, all seasons</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Annual Sharpe</div>
+    <div class="card-val ${annualSharpe>=0.5?'green':annualSharpe>=0?'yellow':'red'}">${fmt(annualSharpe,2)}</div>
+    <div class="card-sub">low — high variance</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Bundesliga EV</div>
+    <div class="card-val purple">+9.1%</div>
+    <div class="card-sub">z = 2.09, p = 0.018 ✓</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Avg HT Draw Price</div>
+    <div class="card-val blue">${fmt(avgHt)}¢</div>
+    <div class="card-sub">estimated from Pinnacle × 1.40</div>
+  </div>
+`;
+
+// Equity curve chart
+const eqX = YEARLY.map(r => r.season);
+const eqY = YEARLY.map(r => r.cum_pnl);
+const colors = YEARLY.map((r,i) => {
+  if (i === 0) return '#58a6ff';
+  return r.cum_pnl > YEARLY[i-1].cum_pnl ? '#3fb950' : '#f85149';
+});
+
+Plotly.newPlot('equity-chart', [{
+  x: eqX, y: eqY, type: 'scatter', mode: 'lines+markers',
+  line: { color: '#58a6ff', width: 2.5 },
+  marker: { color: YEARLY.map(r => r.profitable ? '#3fb950' : '#f85149'), size: 8, line: { color: '#0d1117', width: 2 } },
+  fill: 'tozeroy',
+  fillcolor: 'rgba(88,166,255,0.07)',
+  hovertemplate: '<b>%{x}</b><br>Cum P&L: %{y:+,.0f}<extra></extra>'
+},{
+  x: eqX, y: Array(eqX.length).fill(0), type: 'scatter', mode: 'lines',
+  line: { color: 'rgba(255,255,255,0.15)', width: 1, dash: 'dash' },
+  hoverinfo: 'skip', showlegend: false
+}], {
+  paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+  margin: { t: 10, b: 30, l: 60, r: 20 },
+  font: { color: '#8b949e', size: 12 },
+  xaxis: { showgrid: false, tickfont: { size: 11 }, tickangle: -30 },
+  yaxis: { showgrid: true, gridcolor: '#21262d', zeroline: true, zerolinecolor: '#30363d', tickformat: '+,d', tickprefix: '' },
+  showlegend: false,
+  hovermode: 'closest'
+});
+
+// Yearly table
+const thead = `<thead><tr>
+  <th>Season</th><th>Games</th><th>Draws</th><th>Draw%</th>
+  <th>Avg HT Price</th><th>ROI/Trade</th><th>Season P&amp;L</th><th>Cum P&amp;L</th><th>z</th>
+</tr></thead>`;
+
+const tbody = `<tbody>${YEARLY.map(r => {
+  const r_ = roi(r.draw_pct, r.avg_ht);
+  const pnlCls = pnlClass(r.pnl);
+  const cumCls = pnlClass(r.cum_pnl);
+  const zCls = Math.abs(r.z) > 1.96 ? 'sig' : (r.z > 0 ? 'profit' : 'loss');
+  return `<tr>
+    <td>${r.season}</td>
+    <td>${r.n.toLocaleString()}</td>
+    <td>${r.draws}</td>
+    <td>${fmt(r.draw_pct)}%</td>
+    <td>${fmt(r.avg_ht)}¢</td>
+    <td class="${r_>=0?'profit':'loss'}">${pnlSign(r_)}${fmt(r_)}%</td>
+    <td class="${pnlCls}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
+    <td class="${cumCls}">${pnlSign(r.cum_pnl)}${r.cum_pnl.toLocaleString()}</td>
+    <td class="${zCls}">${r.z > 0 ? '+' : ''}${fmt(r.z,2)}</td>
+  </tr>`;
+}).join('')}
+<tr style="font-weight:700; border-top: 2px solid #30363d;">
+  <td>TOTAL</td><td>6,883</td><td>2,516</td>
+  <td>${fmt(2516/6883*100)}%</td>
+  <td>${fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)}¢</td>
+  <td class="${overallROI>=0?'profit':'loss'}">${pnlSign(overallROI)}${fmt(overallROI)}%</td>
+  <td class="${pnlClass(67343)}">+67,343</td>
+  <td class="${pnlClass(67343)}">+67,343</td>
+  <td></td>
+</tr></tbody>`;
+
+document.getElementById('yearly-table').innerHTML = thead + tbody;
+
+// League table
+const lthead = `<thead><tr>
+  <th>League</th><th>Games (0-0 HT)</th><th>Draws</th><th>Draw%</th>
+  <th>Market HT Price</th><th>EV / Trade</th><th>Total P&amp;L</th><th>z-score</th><th>Signal</th>
+</tr></thead>`;
+
+const ltbody = `<tbody>${LEAGUES.map(r => {
+  const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
+  const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
+  return `<tr>
+    <td>${r.name}</td>
+    <td>${r.n.toLocaleString()}</td>
+    <td>${r.draws.toLocaleString()}</td>
+    <td>${fmt(r.draw_pct)}%</td>
+    <td>${fmt(r.avg_ht)}¢</td>
+    <td class="${r.ev>=0?'profit':'loss'}">${pnlSign(r.ev)}${fmt(r.ev)}%</td>
+    <td class="${pnlClass(r.pnl)}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
+    <td class="${Math.abs(r.z)>1.96?'sig':(r.z>0?'profit':'loss')}">${r.z>0?'+':''}${fmt(r.z,2)}</td>
+    <td><span class="badge ${sig}">${sigText}</span></td>
+  </tr>`;
+}).join('')}</tbody>`;
+
+document.getElementById('league-table').innerHTML = lthead + ltbody;
+</script>
+</body>
+</html>
