@@ -145,6 +145,30 @@ const YEARLY = [
   {season:"2024/25",n:477,draws:178,draw_pct:37.3,avg_pre:26.0,avg_ht:36.4,pnl:16252,cum_pnl:67343,z:0.40,profitable:1},
 ];
 
+// KO all-games backtest (from historical_odds.csv — Pinnacle prices, 5 leagues 2012–2025)
+const YEARLY_KO = [
+  {season:"2012/13",n:1826,draws:474,draw_pct:26.0,avg_ko:25.6,pnl:28531,cum_pnl:28531,z:0.85},
+  {season:"2013/14",n:1826,draws:426,draw_pct:23.3,avg_ko:25.0,pnl:-124168,cum_pnl:-95637,z:-3.63},
+  {season:"2014/15",n:1826,draws:474,draw_pct:26.0,avg_ko:25.5,pnl:35804,cum_pnl:-59833,z:1.0},
+  {season:"2015/16",n:1826,draws:473,draw_pct:25.9,avg_ko:25.5,pnl:28643,cum_pnl:-31190,z:0.82},
+  {season:"2016/17",n:1826,draws:421,draw_pct:23.1,avg_ko:24.8,pnl:-125169,cum_pnl:-156359,z:-3.7},
+  {season:"2017/18",n:1826,draws:447,draw_pct:24.5,avg_ko:24.6,pnl:-7423,cum_pnl:-163782,z:-0.18},
+  {season:"2018/19",n:1826,draws:472,draw_pct:25.8,avg_ko:25.0,pnl:58432,cum_pnl:-105350,z:1.6},
+  {season:"2019/20",n:1725,draws:420,draw_pct:24.3,avg_ko:24.9,pnl:-41566,cum_pnl:-146916,z:-0.98},
+  {season:"2020/21",n:1826,draws:465,draw_pct:25.5,avg_ko:25.1,pnl:29100,cum_pnl:-117816,z:0.66},
+  {season:"2021/22",n:1826,draws:472,draw_pct:25.8,avg_ko:25.0,pnl:58432,cum_pnl:-59384,z:1.6},
+  {season:"2022/23",n:1826,draws:443,draw_pct:24.3,avg_ko:25.3,pnl:-72174,cum_pnl:-131558,z:-1.76},
+  {season:"2023/24",n:1752,draws:463,draw_pct:26.4,avg_ko:24.7,pnl:120583,cum_pnl:-10975,z:3.17},
+  {season:"2024/25",n:1752,draws:437,draw_pct:24.9,avg_ko:25.0,pnl:-7008,cum_pnl:-17983,z:-0.15},
+];
+const LEAGUES_KO = [
+  {name:"Premier League",n:4940,draws:1165,draw_pct:23.6,avg_ko:24.3,ev:-2.9,pnl:-142305,z:-3.09},
+  {name:"La Liga",        n:4940,draws:1256,draw_pct:25.4,avg_ko:25.3,ev:0.4, pnl:19526,  z:0.46},
+  {name:"Bundesliga",     n:3978,draws:980, draw_pct:24.6,avg_ko:23.9,ev:2.9, pnl:116510, z:2.89},
+  {name:"Serie A",        n:4940,draws:1272,draw_pct:25.7,avg_ko:25.4,ev:1.2, pnl:58346,  z:1.26},
+  {name:"Ligue 1",        n:4691,draws:1214,draw_pct:25.9,avg_ko:26.3,ev:-1.5,pnl:-71346, z:-1.5},
+];
+
 // avg_pre = Pinnacle pre-game implied draw probability (= KO buy price in ¢)
 // draw_pct = actual draw rate from games that were 0-0 at HT (= HT draw %)
 // avg_ht = estimated HT buy price = avg_pre × 1.40 (= HT buy price in ¢)
@@ -256,41 +280,44 @@ function renderBT(mode) {
     htBtn.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid #30363d;background:#0d1117;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer';
     note.textContent = 'Buy draw at kickoff · all games (0-0 at KO = all games)';
   }
-  const priceKey  = isHT ? 'avg_ht' : 'avg_pre';
-  const priceLbl  = isHT ? 'HT Price' : 'KO Price';
-  const priceCls  = isHT ? 'group-ht' : 'group-ko';
-  const priceTip  = isHT ? 'Estimated market price at 0-0 HT = KO × 1.40' : 'Pinnacle implied draw probability at kickoff';
-  const priceBg   = isHT ? 'rgba(63,185,80,0.03)' : 'rgba(88,166,255,0.03)';
-  const priceClr  = isHT ? 'var(--green)' : 'var(--blue)';
-  const drawLbl   = isHT ? 'Draw% (0-0 HT)' : 'Draw% (0-0 KO)';
-  const drawTip   = isHT
-    ? 'Actual draw rate for games that were 0-0 at HT (~553/yr). All-games draw rate ≈ 26% = KO Price.'
-    : 'Actual draw rate for ALL games. All games start 0-0 at KO. ≈ KO Price — Pinnacle is sharp, so ROI ≈ 0%.';
+  // Use real all-games data for KO, 0-0 HT data for HT
+  const yearlyData  = isHT ? YEARLY    : YEARLY_KO;
+  const leagueData  = isHT ? LEAGUES   : LEAGUES_KO;
+  const priceLbl    = isHT ? 'HT Price' : 'KO Price';
+  const priceCls    = isHT ? 'group-ht' : 'group-ko';
+  const priceTip    = isHT ? 'Estimated market price at 0-0 HT = KO × 1.40' : 'Pinnacle implied draw probability at kickoff';
+  const priceBg     = isHT ? 'rgba(63,185,80,0.03)' : 'rgba(88,166,255,0.03)';
+  const priceClr    = isHT ? 'var(--green)' : 'var(--blue)';
+  const drawLbl     = isHT ? 'Draw% (0-0 HT)' : 'Draw% (all games)';
+  const drawTip     = isHT
+    ? 'Actual draw rate for games that were 0-0 at HT (~553/yr out of ~1826 total)'
+    : 'Actual draw rate for ALL games (~1826/yr across 5 leagues). ≈ KO Price — Pinnacle is sharp.';
 
   // Yearly table
-  let cumPnl = 0;
-  const rows = YEARLY.map(r => {
-    const price = r[priceKey];
+  const rows = yearlyData.map(r => {
+    const price = isHT ? r.avg_ht : r.avg_ko;
     const r_ = roi(r.draw_pct, price);
-    const pnl = isHT ? r.pnl : Math.round(r.n * 1000 * (r.draw_pct/price - 1));
-    cumPnl += pnl;
     const zCls = Math.abs(r.z) > 1.96 ? 'sig' : (r.z > 0 ? 'profit' : 'loss');
     return `<tr>
       <td>${r.season}</td>
       <td>${r.n.toLocaleString()}</td>
-      <td>${r.draws}</td>
+      <td>${r.draws.toLocaleString()}</td>
       <td style="background:${priceBg};color:${priceClr};font-weight:600">${fmt(price)}¢</td>
       <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
       <td class="${r_>=0?'profit':'loss'}">${pnlSign(r_)}${fmt(r_)}%</td>
-      <td class="${pnl>=0?'profit':'loss'}">${pnlSign(pnl)}${Math.abs(pnl).toLocaleString()}</td>
-      <td class="${cumPnl>=0?'profit':'loss'}">${pnlSign(cumPnl)}${Math.abs(cumPnl).toLocaleString()}</td>
+      <td class="${pnlClass(r.pnl)}">${pnlSign(r.pnl)}${Math.abs(r.pnl).toLocaleString()}</td>
+      <td class="${pnlClass(r.cum_pnl)}">${pnlSign(r.cum_pnl)}${Math.abs(r.cum_pnl).toLocaleString()}</td>
       <td class="${zCls}">${r.z > 0 ? '+' : ''}${fmt(r.z,2)}</td>
     </tr>`;
   }).join('');
-  const totPrice = isHT ? fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length) : fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length);
-  const totDrPct = fmt(2516/6883*100);
-  const totRoi = isHT ? overallROI : roi(2516/6883*100, parseFloat(totPrice));
-  const totPnl = isHT ? 67343 : Math.round(6883 * 1000 * (2516/6883/parseFloat(totPrice)*100/100 - 1));
+
+  const totN = yearlyData.reduce((s,r)=>s+r.n,0);
+  const totDr = yearlyData.reduce((s,r)=>s+r.draws,0);
+  const totDrPct = fmt(totDr/totN*100);
+  const totPrice = isHT ? fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)
+                        : fmt(YEARLY_KO.reduce((s,r)=>s+r.avg_ko,0)/YEARLY_KO.length);
+  const totRoi = isHT ? overallROI : roi(totDr/totN*100, parseFloat(totPrice));
+  const totPnl = yearlyData.reduce((s,r)=>s+r.pnl,0);
 
   document.getElementById('yearly-table').innerHTML = `
     <thead><tr>
@@ -305,13 +332,12 @@ function renderBT(mode) {
     </tr></thead>
     <tbody>${rows}
     <tr style="font-weight:700;border-top:2px solid #30363d">
-      <td>TOTAL</td><td>6,883</td><td>2,516</td>
+      <td>TOTAL</td><td>${totN.toLocaleString()}</td><td>${totDr.toLocaleString()}</td>
       <td style="background:${priceBg};color:${priceClr};font-weight:600">${totPrice}¢</td>
       <td style="color:#f0c040;font-weight:700">${totDrPct}%</td>
       <td class="${totRoi>=0?'profit':'loss'}">${pnlSign(totRoi)}${fmt(totRoi)}%</td>
       <td class="${pnlClass(totPnl)}">${pnlSign(totPnl)}${Math.abs(totPnl).toLocaleString()}</td>
-      <td class="${pnlClass(totPnl)}">${pnlSign(totPnl)}${Math.abs(totPnl).toLocaleString()}</td>
-      <td></td>
+      <td></td><td></td>
     </tr></tbody>`;
 
   // League table header label
@@ -328,10 +354,9 @@ function renderBT(mode) {
       <th>13yr P&amp;L</th>
       <th>Signal</th>
     </tr></thead>
-    <tbody>${LEAGUES.map(r => {
-      const price = r[priceKey];
+    <tbody>${leagueData.map(r => {
+      const price = isHT ? r.avg_ht : r.avg_ko;
       const ev_ = ((r.draw_pct / price) - 1) * 100;
-      const lgPnl = isHT ? r.pnl : Math.round(r.n * 1000 * (r.draw_pct/price - 1));
       const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
       const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
       return `<tr>
@@ -341,7 +366,7 @@ function renderBT(mode) {
         <td style="background:${priceBg};color:${priceClr};font-weight:600">${fmt(price)}¢</td>
         <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
         <td class="${ev_>=0?'profit':'loss'}">${pnlSign(ev_)}${fmt(ev_)}%</td>
-        <td class="${pnlClass(lgPnl)}">${pnlSign(lgPnl)}${Math.abs(lgPnl).toLocaleString()}</td>
+        <td class="${pnlClass(r.pnl)}">${pnlSign(r.pnl)}${Math.abs(r.pnl).toLocaleString()}</td>
         <td><span class="badge ${sig}">${sigText}</span></td>
       </tr>`;
     }).join('')}</tbody>`;
