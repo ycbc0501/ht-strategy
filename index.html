@@ -80,11 +80,23 @@
 
   <!-- Year-by-year table -->
   <h2>Year-by-Year Results (All 5 Leagues)</h2>
-  <table id="yearly-table"></table>
-
-  <!-- League breakdown -->
-  <h2>By League (2012–2025, 0-0 HT Games Only)</h2>
-  <table id="league-table"></table>
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+    <span style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-right:4px">View:</span>
+    <button id="bt-ko-btn" onclick="renderBT('KO')"
+      style="padding:5px 14px;border-radius:20px;border:1px solid #30363d;background:#0d1117;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">
+      KO (all games)
+    </button>
+    <button id="bt-ht-btn" onclick="renderBT('HT')"
+      style="padding:5px 14px;border-radius:20px;border:1px solid rgba(63,185,80,0.5);background:rgba(63,185,80,0.12);color:var(--green);font-size:12px;font-weight:600;cursor:pointer">
+      HT (0-0 at HT)
+    </button>
+    <span id="bt-mode-note" style="font-size:11px;color:var(--text2);margin-left:6px">Buy draw at halftime · only games tied 0-0 at HT</span>
+  </div>
+  <div id="bt-tables-wrap">
+    <table id="yearly-table"></table>
+    <h2 id="league-h2" style="margin-top:24px">By League (2012–2025, 0-0 HT Games Only)</h2>
+    <table id="league-table"></table>
+  </div>
 
   <!-- Strategy description -->
   <h2>Strategy Rules</h2>
@@ -229,86 +241,113 @@ Plotly.newPlot('equity-chart', [{
   hovermode: 'closest'
 });
 
-// Yearly table — 3 columns: KO Price | HT Price | Actual Draw%
-const thead = `<thead>
-<tr>
-  <th style="text-align:left">Season</th>
-  <th>Games</th>
-  <th>Draws</th>
-  <th class="group-ko" title="Pinnacle implied draw probability at kickoff">KO Price</th>
-  <th class="group-ht" title="Estimated market price at 0-0 HT = KO × 1.40">HT Price</th>
-  <th style="color:#f0c040;font-weight:700" title="Draw rate among games that were 0-0 at HT (filtered subset). All-games draw rate ≈ 26% = KO Price.">Draw% (0-0 HT)</th>
-  <th>ROI / Trade</th>
-  <th>Season P&amp;L</th>
-  <th>Cum P&amp;L</th>
-  <th>z</th>
-</tr>
-</thead>`;
+function renderBT(mode) {
+  const isHT = mode === 'HT';
+  // Toggle buttons
+  const koBtn = document.getElementById('bt-ko-btn');
+  const htBtn = document.getElementById('bt-ht-btn');
+  const note  = document.getElementById('bt-mode-note');
+  if (isHT) {
+    htBtn.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(63,185,80,0.5);background:rgba(63,185,80,0.12);color:var(--green);font-size:12px;font-weight:600;cursor:pointer';
+    koBtn.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid #30363d;background:#0d1117;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer';
+    note.textContent = 'Buy draw at halftime · only games tied 0-0 at HT';
+  } else {
+    koBtn.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(88,166,255,0.5);background:rgba(88,166,255,0.12);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer';
+    htBtn.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid #30363d;background:#0d1117;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer';
+    note.textContent = 'Buy draw at kickoff · all games (0-0 at KO = all games)';
+  }
+  const priceKey  = isHT ? 'avg_ht' : 'avg_pre';
+  const priceLbl  = isHT ? 'HT Price' : 'KO Price';
+  const priceCls  = isHT ? 'group-ht' : 'group-ko';
+  const priceTip  = isHT ? 'Estimated market price at 0-0 HT = KO × 1.40' : 'Pinnacle implied draw probability at kickoff';
+  const priceBg   = isHT ? 'rgba(63,185,80,0.03)' : 'rgba(88,166,255,0.03)';
+  const priceClr  = isHT ? 'var(--green)' : 'var(--blue)';
+  const drawLbl   = isHT ? 'Draw% (0-0 HT)' : 'Draw% (0-0 KO)';
+  const drawTip   = isHT
+    ? 'Actual draw rate for games that were 0-0 at HT (~553/yr). All-games draw rate ≈ 26% = KO Price.'
+    : 'Actual draw rate for ALL games. All games start 0-0 at KO. ≈ KO Price — Pinnacle is sharp, so ROI ≈ 0%.';
 
-const tbody = `<tbody>${YEARLY.map(r => {
-  const r_ = roi(r.draw_pct, r.avg_ht);
-  const pnlCls = pnlClass(r.pnl);
-  const cumCls = pnlClass(r.cum_pnl);
-  const zCls = Math.abs(r.z) > 1.96 ? 'sig' : (r.z > 0 ? 'profit' : 'loss');
-  return `<tr>
-    <td>${r.season}</td>
-    <td>${r.n.toLocaleString()}</td>
-    <td>${r.draws}</td>
-    <td style="background:rgba(88,166,255,0.03);color:var(--blue);font-weight:600">${fmt(r.avg_pre)}¢</td>
-    <td style="background:rgba(63,185,80,0.03);color:var(--green);font-weight:600">${fmt(r.avg_ht)}¢</td>
-    <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
-    <td class="${r_>=0?'profit':'loss'}">${pnlSign(r_)}${fmt(r_)}%</td>
-    <td class="${pnlCls}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
-    <td class="${cumCls}">${pnlSign(r.cum_pnl)}${r.cum_pnl.toLocaleString()}</td>
-    <td class="${zCls}">${r.z > 0 ? '+' : ''}${fmt(r.z,2)}</td>
-  </tr>`;
-}).join('')}
-<tr style="font-weight:700; border-top: 2px solid #30363d;">
-  <td>TOTAL</td><td>6,883</td><td>2,516</td>
-  <td style="background:rgba(88,166,255,0.03);color:var(--blue);font-weight:600">${fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length)}¢</td>
-  <td style="background:rgba(63,185,80,0.03);color:var(--green);font-weight:600">${fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length)}¢</td>
-  <td style="color:#f0c040;font-weight:700">${fmt(2516/6883*100)}%</td>
-  <td class="${overallROI>=0?'profit':'loss'}">${pnlSign(overallROI)}${fmt(overallROI)}%</td>
-  <td class="${pnlClass(67343)}">+67,343</td>
-  <td class="${pnlClass(67343)}">+67,343</td>
-  <td></td>
-</tr></tbody>`;
+  // Yearly table
+  let cumPnl = 0;
+  const rows = YEARLY.map(r => {
+    const price = r[priceKey];
+    const r_ = roi(r.draw_pct, price);
+    const pnl = isHT ? r.pnl : Math.round(r.n * 1000 * (r.draw_pct/price - 1));
+    cumPnl += pnl;
+    const zCls = Math.abs(r.z) > 1.96 ? 'sig' : (r.z > 0 ? 'profit' : 'loss');
+    return `<tr>
+      <td>${r.season}</td>
+      <td>${r.n.toLocaleString()}</td>
+      <td>${r.draws}</td>
+      <td style="background:${priceBg};color:${priceClr};font-weight:600">${fmt(price)}¢</td>
+      <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
+      <td class="${r_>=0?'profit':'loss'}">${pnlSign(r_)}${fmt(r_)}%</td>
+      <td class="${pnl>=0?'profit':'loss'}">${pnlSign(pnl)}${Math.abs(pnl).toLocaleString()}</td>
+      <td class="${cumPnl>=0?'profit':'loss'}">${pnlSign(cumPnl)}${Math.abs(cumPnl).toLocaleString()}</td>
+      <td class="${zCls}">${r.z > 0 ? '+' : ''}${fmt(r.z,2)}</td>
+    </tr>`;
+  }).join('');
+  const totPrice = isHT ? fmt(YEARLY.reduce((s,r)=>s+r.avg_ht,0)/YEARLY.length) : fmt(YEARLY.reduce((s,r)=>s+r.avg_pre,0)/YEARLY.length);
+  const totDrPct = fmt(2516/6883*100);
+  const totRoi = isHT ? overallROI : roi(2516/6883*100, parseFloat(totPrice));
+  const totPnl = isHT ? 67343 : Math.round(6883 * 1000 * (2516/6883/parseFloat(totPrice)*100/100 - 1));
 
-document.getElementById('yearly-table').innerHTML = thead + tbody;
+  document.getElementById('yearly-table').innerHTML = `
+    <thead><tr>
+      <th style="text-align:left">Season</th>
+      <th>Games</th><th>Draws</th>
+      <th class="${priceCls}" title="${priceTip}">${priceLbl}</th>
+      <th style="color:#f0c040;font-weight:700" title="${drawTip}">${drawLbl}</th>
+      <th>ROI / Trade</th>
+      <th>Season P&amp;L</th>
+      <th>Cum P&amp;L</th>
+      <th>z</th>
+    </tr></thead>
+    <tbody>${rows}
+    <tr style="font-weight:700;border-top:2px solid #30363d">
+      <td>TOTAL</td><td>6,883</td><td>2,516</td>
+      <td style="background:${priceBg};color:${priceClr};font-weight:600">${totPrice}¢</td>
+      <td style="color:#f0c040;font-weight:700">${totDrPct}%</td>
+      <td class="${totRoi>=0?'profit':'loss'}">${pnlSign(totRoi)}${fmt(totRoi)}%</td>
+      <td class="${pnlClass(totPnl)}">${pnlSign(totPnl)}${Math.abs(totPnl).toLocaleString()}</td>
+      <td class="${pnlClass(totPnl)}">${pnlSign(totPnl)}${Math.abs(totPnl).toLocaleString()}</td>
+      <td></td>
+    </tr></tbody>`;
 
-// League table — 3 columns: KO Price | HT Price | Actual Draw%
-const lthead = `<thead>
-<tr>
-  <th style="text-align:left">League</th>
-  <th>Trades</th>
-  <th>Draws</th>
-  <th class="group-ko" title="Pinnacle implied draw probability at kickoff">KO Price</th>
-  <th class="group-ht" title="Estimated market price at 0-0 HT = KO × 1.40">HT Price</th>
-  <th style="color:#f0c040;font-weight:700" title="Draw rate among games that were 0-0 at HT (filtered subset). All-games draw rate ≈ 26% = KO Price.">Draw% (0-0 HT)</th>
-  <th>EV / Trade</th>
-  <th>13yr P&amp;L</th>
-  <th>Signal</th>
-</tr>
-</thead>`;
+  // League table header label
+  document.getElementById('league-h2').textContent =
+    isHT ? 'By League (2012–2025, 0-0 HT Games Only)' : 'By League (2012–2025, All Games at KO)';
 
-const ltbody = `<tbody>${LEAGUES.map(r => {
-  const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
-  const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
-  const evCls = r.ev >= 0 ? 'profit' : 'loss';
-  return `<tr>
-    <td>${r.name}</td>
-    <td>${r.n.toLocaleString()}</td>
-    <td>${r.draws.toLocaleString()}</td>
-    <td style="background:rgba(88,166,255,0.03);color:var(--blue);font-weight:600">${fmt(r.avg_pre)}¢</td>
-    <td style="background:rgba(63,185,80,0.03);color:var(--green);font-weight:600">${fmt(r.avg_ht)}¢</td>
-    <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
-    <td class="${evCls}">${pnlSign(r.ev)}${fmt(r.ev)}%</td>
-    <td class="${pnlClass(r.pnl)}">${pnlSign(r.pnl)}${r.pnl.toLocaleString()}</td>
-    <td><span class="badge ${sig}">${sigText}</span></td>
-  </tr>`;
-}).join('')}</tbody>`;
+  document.getElementById('league-table').innerHTML = `
+    <thead><tr>
+      <th style="text-align:left">League</th>
+      <th>Trades</th><th>Draws</th>
+      <th class="${priceCls}" title="${priceTip}">${priceLbl}</th>
+      <th style="color:#f0c040;font-weight:700" title="${drawTip}">${drawLbl}</th>
+      <th>EV / Trade</th>
+      <th>13yr P&amp;L</th>
+      <th>Signal</th>
+    </tr></thead>
+    <tbody>${LEAGUES.map(r => {
+      const price = r[priceKey];
+      const ev_ = ((r.draw_pct / price) - 1) * 100;
+      const lgPnl = isHT ? r.pnl : Math.round(r.n * 1000 * (r.draw_pct/price - 1));
+      const sig = Math.abs(r.z) > 1.96 ? 'badge-sig' : (r.z > 1 ? 'badge-ok' : 'badge-bad');
+      const sigText = Math.abs(r.z) > 1.96 ? 'Significant' : (r.z > 0.5 ? 'Weak+' : 'No edge');
+      return `<tr>
+        <td>${r.name}</td>
+        <td>${r.n.toLocaleString()}</td>
+        <td>${r.draws.toLocaleString()}</td>
+        <td style="background:${priceBg};color:${priceClr};font-weight:600">${fmt(price)}¢</td>
+        <td style="color:#f0c040;font-weight:700">${fmt(r.draw_pct)}%</td>
+        <td class="${ev_>=0?'profit':'loss'}">${pnlSign(ev_)}${fmt(ev_)}%</td>
+        <td class="${pnlClass(lgPnl)}">${pnlSign(lgPnl)}${Math.abs(lgPnl).toLocaleString()}</td>
+        <td><span class="badge ${sig}">${sigText}</span></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+}
 
-document.getElementById('league-table').innerHTML = lthead + ltbody;
+renderBT('HT');
 </script>
 </body>
 </html>
